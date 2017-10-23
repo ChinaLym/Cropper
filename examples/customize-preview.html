@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <title>Cropper.js</title>
+  <script>
+    //下面用于图片上传预览功能
+    function setImagePreview(avalue) {
+      var docObj = document.getElementById("doc");
+      console.log(docObj.files)
+      var imgObjPreview = document.getElementById("image");
+      if (docObj.files && docObj.files[0]) {
+        //火狐下，直接设img属性
+        imgObjPreview.style.display = 'block';
+        imgObjPreview.style.maxWidth = '960px';
+        imgObjPreview.style.height = '400px';
+        //imgObjPreview.src = docObj.files[0].getAsDataURL();
+        // 取绝对路径的getAsDataURL
+
+        //火狐7以上版本不能用上面的getAsDataURL()方式获取，需要一下方式
+        imgObjPreview.src = window.URL.createObjectURL(docObj.files[0]);
+      } else {
+        //IE下，使用滤镜
+        docObj.select();
+        var imgSrc = document.selection.createRange().text;
+        var localImagId = document.getElementById("localImag");
+        //必须设置初始大小
+        localImagId.style.maxWidth = "960px";
+        localImagId.style.height = 'auto';
+        //图片异常的捕捉，防止用户修改后缀来伪造图片
+        try {
+          localImagId.style.filter = "progid:DXImageTransform.Microsoft.AlphaImageLoader(sizingMethod=scale)";
+          localImagId.filters.item("DXImageTransform.Microsoft.AlphaImageLoader").src = imgSrc;
+        } catch (e) {
+          alert("您上传的图片格式不正确，请重新选择!");
+          return false;
+        }
+        imgObjPreview.style.display = 'none';
+        document.selection.empty();
+      }
+      return true;
+    }
+  </script>
+  <link rel="stylesheet" href="../dist/cropper.css">
+  <style>
+    .container {
+      max-width: 960px;
+      margin: 20px auto;
+    }
+
+    img {
+      max-width: 100%;
+    }
+
+    .row,
+    .preview {
+      overflow: hidden;
+    }
+
+    .col {
+      float: left;
+    }
+
+    .col-6 {
+      width: 50%;
+    }
+
+    .col-3 {
+      width: 25%;
+    }
+
+    .col-2 {
+      width: 16.7%;
+    }
+
+    .col-1 {
+      width: 8.3%;
+    }
+
+    .cropper-view-box,
+    .cropper-face,
+    .preview {
+      border-radius: 50%;
+    }
+  </style>
+</head>
+
+<body>
+
+        <div align="center" style="padding-top:10px;">
+          <input type="file" name="file" id="doc" style="width:150px;" onchange="javascript:setImagePreview();">
+        </div>
+
+
+  <div class="container">
+    <h1>Customize preview for Cropper</h1>
+    <div class="row">
+      <div class="col col-6" id="localImag">
+        <img id="image" src="../docs/images/picture.jpg" alt="Picture">
+      </div>
+      <div class="col col-3">
+        <div class="preview"></div>
+      </div>
+      <div class="col col-2">
+        <div class="preview"></div>
+      </div>
+      <div class="col col-1">
+        <div class="preview"></div>
+      </div>
+    </div>
+    <h3>Result</h3>
+    <p>
+      <button type="button" id="button">剪切</button>
+    </p>
+    <div id="result"></div>
+    <p>
+      <button type="button" id="button2">保存</button>
+    </p>
+  </div>
+
+  <script src="../dist/cropper.js"></script>
+  <script>
+    let blob = ''
+    function each(arr, callback) {
+      var length = arr.length;
+      var i;
+
+      for (i = 0; i < length; i++) {
+        callback.call(arr, arr[i], i, arr);
+      }
+
+      return arr;
+    }
+
+    function getRoundedCanvas(sourceCanvas) {
+      var canvas = document.createElement('canvas');
+      var context = canvas.getContext('2d');
+      var width = sourceCanvas.width;
+      var height = sourceCanvas.height;
+      canvas.width = width;
+      canvas.height = height;
+      context.imageSmoothingEnabled = true;
+      context.drawImage(sourceCanvas, 0, 0, width, height);
+      context.globalCompositeOperation = 'destination-in';
+      context.beginPath();
+      context.arc(width / 2, height / 2, Math.min(width, height) / 2, 0, 2 * Math.PI, true);
+      context.fill();
+      return canvas;
+    }
+    var file = document.getElementById('doc')
+    file.addEventListener('change', function () {
+      var image = document.querySelector('#image');
+      var previews = document.querySelectorAll('.preview');
+      var cropper = new Cropper(image, {
+        aspectRatio: 1,
+        toggleDragModeOnDblclick: false,
+        cropBoxResizable: false,
+        cropBoxMovable: true,
+        highlight: false,
+        center: false,
+        guides: false,
+        restore: false,
+        autoCropArea: 0.65,
+        dragMode: 'move',
+        // movable:false,
+        ready: function () {
+          var clone = this.cloneNode();
+          croppable = true;
+          clone.className = ''
+          clone.style.cssText = (
+            'display: block;' +
+            'width: 100%;' +
+            'min-width: 0;' +
+            'min-height: 0;' +
+            'max-width: none;' +
+            'max-height: none;'
+          );
+          each(previews, function (elem) {
+            elem.appendChild(clone.cloneNode());
+          });
+        },
+        // 类型： Function
+        // 默认： null“ cropper” 事件的捷径。
+        crop: function (e) {
+          var data = e.detail;
+          var cropper = this.cropper;
+          var imageData = cropper.getImageData(); //输出图像位置，大小等相关数据。
+          var previewAspectRatio = data.width / data.height;
+
+          each(previews, function (elem) {
+            var previewImage = elem.getElementsByTagName('img').item(0);
+            var previewWidth = elem.offsetWidth;
+            var previewHeight = previewWidth / previewAspectRatio;
+            var imageScaledRatio = data.width / previewWidth;
+
+            elem.style.height = previewHeight + 'px';
+            previewImage.style.width = imageData.naturalWidth / imageScaledRatio + 'px';
+            previewImage.style.height = imageData.naturalHeight / imageScaledRatio + 'px';
+            previewImage.style.marginLeft = -data.x / imageScaledRatio + 'px';
+            previewImage.style.marginTop = -data.y / imageScaledRatio + 'px';
+          });
+        },
+
+      });
+      
+      button.onclick = function () {
+        var croppedCanvas;
+        var roundedCanvas;
+        var roundedImage;
+
+        if (!croppable) {
+          return;
+        }
+        // Crop
+        croppedCanvas = cropper.getCroppedCanvas();
+        // Round
+        roundedCanvas = getRoundedCanvas(croppedCanvas);
+        // Show
+        roundedImage = document.createElement('img');
+        roundedImage.src = roundedCanvas.toDataURL()
+         blob = dataURLtoBlob(roundedCanvas.toDataURL());
+        console.log(blob)
+        result.innerHTML = '';
+        result.appendChild(roundedImage);
+      }
+
+      function dataURLtoBlob(dataurl) {
+        var arr = dataurl.split(','),
+          mime = arr[0].match(/:(.*?);/)[1],
+          bstr = atob(arr[1]),
+          n = bstr.length,
+          u8arr = new Uint8Array(n);
+        while (n--) {
+          u8arr[n] = bstr.charCodeAt(n);
+        }
+        return new Blob([u8arr], {
+          type: mime
+        });
+      }
+    });
+    button2.onclick = function () {
+      var fd = new FormData();
+      fd.append("image", blob, "image.png");
+      var xhr = new XMLHttpRequest();
+      xhr.open('POST', '/personal/upload', true);
+      xhr.send(fd);
+    }
+  </script>
+</body>
+
+</html>
